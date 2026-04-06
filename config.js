@@ -1925,9 +1925,15 @@ var config = {
 
     // JWT authentication — required so that only participants who hold a valid
     // token issued by the FaithCounseling API can join a room.
-    // Configure Prosody with the token_verification plugin and set
-    // APP_ID / APP_SECRET in the server environment.
-    // Uncomment when a self-hosted Jitsi stack is deployed:
+    //
+    // HOW TO ENABLE FOR PRODUCTION:
+    //   1. Configure Prosody with the token_verification Lua plugin.
+    //   2. Set JWT_APP_ID and JWT_APP_SECRET in the docker-compose .env file
+    //      (see docker-compose.yml and integration/.env.example).
+    //   3. Uncomment the three lines below.
+    //
+    // These lines are commented out here so that local development against
+    // meet.jit.si (no JWT required) works without changing the config file.
     // enableAuth: true,
     // authentication: 'token',
     // tokenAuthUrl: 'https://meet.faithcounseling.app/static/close.html',

@@ -106,11 +106,13 @@ export function useJitsiApi({
             width: '100%',
             height: '100%',
             configOverwrite: {
-                // Ensure welcome page and lobby settings match server config
+                // welcomePage.disabled is already set server-side in config.js; repeated
+                // here so the embedded iframe honours it regardless of server config drift.
                 welcomePage: { disabled: true },
                 disableInviteFunctions: true,
                 doNotStoreRoom: true,
-                prejoinConfig: { enabled: false },
+                // Pre-join screen is intentionally kept at its server default (enabled)
+                // so counselors and clients can confirm audio/video devices before entering.
             },
             interfaceConfigOverwrite: {
                 SHOW_JITSI_WATERMARK: false,
@@ -159,7 +161,9 @@ export function useJitsiApi({
 
     useEffect(() => {
         let cleanup;
-        initialize().then((fn) => { cleanup = fn; });
+        initialize()
+            .then((fn) => { cleanup = fn; })
+            .catch((err) => { console.error('[useJitsiApi] initialization failed:', err); });
         return () => { cleanup?.(); };
     }, [initialize]);
 

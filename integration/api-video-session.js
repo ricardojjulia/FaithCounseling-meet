@@ -37,6 +37,8 @@ const {
  * appointment ID alone.
  */
 function deriveRoomName(appointmentId, secret) {
+    // 24 hex characters = 96 bits of entropy — sufficient for collision-free
+    // room names across a typical counseling practice workload.
     const hash = createHash('sha256')
         .update(`faith-room-${appointmentId}-${secret}`)
         .digest('hex')
@@ -70,10 +72,13 @@ function buildJwt({ roomName, userId, displayName, email, isModerator }) {
                 id: String(userId),
                 name: displayName,
                 ...(email ? { email } : {}),
+                // Jitsi accepts boolean true/false for the moderator field in the
+                // JWT context (Prosody token_verification plugin).
                 moderator: isModerator,
             },
             features: {
-                livestreaming: false,
+                // Use the hyphenated form expected by the Jitsi JWT feature flags spec.
+                'live-streaming': false,
                 recording: false,
                 'screen-sharing': true,
                 transcription: false,
