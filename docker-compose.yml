@@ -1,0 +1,208 @@
+# Faith Counseling — self-hosted Jitsi Meet stack
+#
+# Usage
+# -----
+# 1. Copy .env.example to .env and fill in every value.
+# 2. docker compose up -d
+#
+# For HTTPS in production, mount real TLS certificates into the `web` service
+# and update NGINX_CONFIG accordingly.  In development the included self-signed
+# certificate is used automatically.
+#
+# Reference: https://jitsi.github.io/handbook/docs/devops-guide/devops-guide-docker
+
+version: '3.9'
+
+services:
+
+  # ── Nginx / Jitsi Web UI ──────────────────────────────────────────────────
+  web:
+    image: jitsi/web:${JITSI_IMAGE_VERSION:-stable-9646}
+    restart: unless-stopped
+    ports:
+      - '${HTTP_PORT:-80}:80'
+      - '${HTTPS_PORT:-443}:4443'
+    volumes:
+      - ${CONFIG_DIR:-./.jitsi-meet-cfg}/web:/config:Z
+      - ${CONFIG_DIR:-./.jitsi-meet-cfg}/web/letsencrypt:/etc/letsencrypt:Z
+      - ${CONFIG_DIR:-./.jitsi-meet-cfg}/transcripts:/usr/share/jitsi-meet/transcripts:Z
+    environment:
+      - ENABLE_AUTH
+      - ENABLE_GUESTS
+      - ENABLE_LETSENCRYPT
+      - ENABLE_HTTP_REDIRECT
+      - DISABLE_HTTPS
+      - LETSENCRYPT_DOMAIN
+      - LETSENCRYPT_EMAIL
+      - PUBLIC_URL
+      - XMPP_DOMAIN
+      - XMPP_AUTH_DOMAIN
+      - XMPP_BOSH_URL_BASE
+      - XMPP_GUEST_DOMAIN
+      - XMPP_MUC_DOMAIN
+      - XMPP_RECORDER_DOMAIN
+      - ETHERPAD_URL_BASE
+      - TZ
+      - JIBRI_BREWERY_MUC
+      - JIBRI_PENDING_TIMEOUT
+      - JIBRI_XMPP_USER
+      - JIBRI_XMPP_PASSWORD
+      - JIBRI_RECORDER_USER
+      - JIBRI_RECORDER_PASSWORD
+      - ENABLE_RECORDING
+      - AMPLITUDE_ID
+      - ANALYTICS_SCRIPT_URLS
+      - ANALYTICS_WHITELISTED_EVENTS
+      - CALLSTATS_CUSTOM_SCRIPT_URL
+      - CALLSTATS_ID
+      - CALLSTATS_SECRET
+      - CHROME_EXTENSION_BANNER_JSON
+      - TOOLBAR_BUTTONS
+      - HIDE_PREMEETING_BUTTONS
+      - ENABLE_TRANSCRIPTIONS
+      - DROPBOX_APPKEY
+      - DROPBOX_REDIRECT_URI
+      - GOOGLE_ANALYTICS_ID
+      - MATOMO_ENDPOINT
+      - MATOMO_SITE_ID
+      - WELCOME_PAGE_TITLE
+      - WELCOME_PAGE_DESCRIPTION
+      - RESOLUTION
+      - RESOLUTION_MIN
+      - RESOLUTION_WIDTH
+      - RESOLUTION_WIDTH_MIN
+      - ENABLE_REQUIRE_DISPLAY_NAME
+      - ENABLE_NOISY_MIC_DETECTION
+      - ENABLE_NO_AUDIO_DETECTION
+      - DESKTOP_SHARING_FRAMERATE_MIN
+      - DESKTOP_SHARING_FRAMERATE_MAX
+      - START_AUDIO_ONLY
+      - START_AUDIO_MUTED
+      - START_VIDEO_MUTED
+      - TESTING_CAP_SCREENSHARE_BITRATE
+      - TESTING_OCTO_PROBABILITY
+      - XMPP_MODULES
+      - XMPP_MUC_MODULES
+      - XMPP_INTERNAL_MUC_MODULES
+      - GLOBAL_MODULES
+      - GLOBAL_CONFIG
+      - ENABLE_PREJOIN_PAGE
+    networks:
+      meet.jitsi:
+
+  # ── Prosody (XMPP server) ─────────────────────────────────────────────────
+  prosody:
+    image: jitsi/prosody:${JITSI_IMAGE_VERSION:-stable-9646}
+    restart: unless-stopped
+    expose:
+      - '5222'
+      - '5347'
+      - '5280'
+    volumes:
+      - ${CONFIG_DIR:-./.jitsi-meet-cfg}/prosody/config:/config:Z
+      - ${CONFIG_DIR:-./.jitsi-meet-cfg}/prosody/prosody-plugins-custom:/prosody-plugins-custom:Z
+    environment:
+      - AUTH_TYPE
+      - ENABLE_AUTH
+      - ENABLE_GUESTS
+      - ENABLE_LOBBY
+      - ENABLE_AV_MODERATION
+      - ENABLE_BREAKOUT_ROOMS
+      - GLOBAL_CONFIG
+      - GLOBAL_MODULES
+      - XMPP_DOMAIN
+      - XMPP_AUTH_DOMAIN
+      - XMPP_GUEST_DOMAIN
+      - XMPP_MUC_DOMAIN
+      - XMPP_INTERNAL_MUC_DOMAIN
+      - XMPP_MODULES
+      - XMPP_MUC_MODULES
+      - XMPP_INTERNAL_MUC_MODULES
+      - XMPP_RECORDER_DOMAIN
+      - JICOFO_COMPONENT_SECRET
+      - JICOFO_AUTH_USER
+      - JICOFO_AUTH_PASSWORD
+      - JVB_AUTH_USER
+      - JVB_AUTH_PASSWORD
+      - JIBRI_XMPP_USER
+      - JIBRI_XMPP_PASSWORD
+      - JIBRI_RECORDER_USER
+      - JIBRI_RECORDER_PASSWORD
+      - JIGASI_XMPP_USER
+      - JIGASI_XMPP_PASSWORD
+      - JWT_APP_ID
+      - JWT_APP_SECRET
+      - JWT_ACCEPTED_ISSUERS
+      - JWT_ACCEPTED_AUDIENCES
+      - JWT_ASAP_KEYSERVER
+      - JWT_ALLOW_EMPTY
+      - JWT_AUTH_TYPE
+      - JWT_TOKEN_AUTH_MODULE
+      - LOG_LEVEL
+      - TZ
+    networks:
+      meet.jitsi:
+        aliases:
+          - ${XMPP_SERVER:-xmpp.meet.jitsi}
+
+  # ── Jicofo (conference focus component) ──────────────────────────────────
+  jicofo:
+    image: jitsi/jicofo:${JITSI_IMAGE_VERSION:-stable-9646}
+    restart: unless-stopped
+    volumes:
+      - ${CONFIG_DIR:-./.jitsi-meet-cfg}/jicofo:/config:Z
+    environment:
+      - AUTH_TYPE
+      - ENABLE_AUTH
+      - XMPP_DOMAIN
+      - XMPP_AUTH_DOMAIN
+      - XMPP_INTERNAL_MUC_DOMAIN
+      - XMPP_SERVER
+      - JICOFO_COMPONENT_SECRET
+      - JICOFO_AUTH_USER
+      - JICOFO_AUTH_PASSWORD
+      - JICOFO_ENABLE_HEALTH_CHECKS
+      - JIBRI_BREWERY_MUC
+      - JIBRI_REQUEST_RETRIES
+      - JIBRI_PENDING_TIMEOUT
+      - JIGASI_BREWERY_MUC
+      - JIGASI_SIP_URI
+      - JVB_BREWERY_MUC
+      - MAX_BRIDGE_PARTICIPANTS
+      - ENABLE_AUTO_OWNER
+      - TZ
+    depends_on:
+      - prosody
+    networks:
+      meet.jitsi:
+
+  # ── JVB (Jitsi Video Bridge) ──────────────────────────────────────────────
+  jvb:
+    image: jitsi/jvb:${JITSI_IMAGE_VERSION:-stable-9646}
+    restart: unless-stopped
+    ports:
+      - '${JVB_PORT:-10000}:10000/udp'
+      - '${JVB_TCP_PORT:-4443}:4443'
+    volumes:
+      - ${CONFIG_DIR:-./.jitsi-meet-cfg}/jvb:/config:Z
+    environment:
+      - DOCKER_HOST_ADDRESS
+      - XMPP_AUTH_DOMAIN
+      - XMPP_INTERNAL_MUC_DOMAIN
+      - XMPP_SERVER
+      - JVB_AUTH_USER
+      - JVB_AUTH_PASSWORD
+      - JVB_BREWERY_MUC
+      - JVB_PORT
+      - JVB_TCP_HARVESTER_DISABLED
+      - JVB_TCP_PORT
+      - JVB_TCP_MAPPED_PORT
+      - JVB_STUN_SERVERS
+      - TZ
+    depends_on:
+      - prosody
+    networks:
+      meet.jitsi:
+
+networks:
+  meet.jitsi:
